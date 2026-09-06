@@ -1562,3 +1562,1663 @@ After understanding these fundamentals, the recommended learning sequence for ou
 ```
 
 The next major concept to understand is **RAG (Retrieval-Augmented Generation)** because it will allow our test case generator to use real API documentation, Swagger/OpenAPI definitions, validation rules, and project-specific information instead of relying only on the LLM's general knowledge.
+
+
+# RAG Fundamentals
+
+## Beginner Notes for .NET Full Stack Developers
+
+This document explains the basic concepts of **RAG (Retrieval-Augmented Generation)** in simple language.
+
+The examples are based on our planned project:
+
+> **GenAI-powered API Test Case Generator for .NET Core APIs**
+
+---
+
+# Table of Contents
+
+1. [What is RAG?](#1-what-is-rag)
+2. [Why do we need RAG?](#2-why-do-we-need-rag)
+3. [RAG vs Fine-Tuning](#3-rag-vs-fine-tuning)
+4. [How does RAG work?](#4-how-does-rag-work)
+5. [What is Chunking?](#5-what-is-chunking)
+6. [Complete RAG Flow](#6-complete-rag-flow)
+7. [RAG Example for API Test Case Generator](#7-rag-example-for-api-test-case-generator)
+8. [Interview Questions and Answers](#8-interview-questions-and-answers)
+9. [Quick Revision](#9-quick-revision)
+
+---
+
+# 1. What is RAG?
+
+## Full Form
+
+**RAG = Retrieval-Augmented Generation**
+
+Don't worry about the complicated name.
+
+In simple words:
+
+> **RAG means: Before asking the LLM to generate an answer, first find the relevant information from your own data and give that information to the LLM.**
+
+So instead of asking the AI:
+
+```text
+Generate test cases.
+```
+
+we do:
+
+```text
+Find relevant API information
+        ↓
+Give that information to the LLM
+        ↓
+Generate test cases
+```
+
+---
+
+# Simple Real-Life Example
+
+Imagine you have a company employee handbook.
+
+You ask:
+
+```text
+What is our company's work-from-home policy?
+```
+
+Instead of expecting the AI to already know your company's policy, the system:
+
+```text
+Search Company Documents
+        ↓
+Find Work From Home Policy
+        ↓
+Give it to LLM
+        ↓
+Generate Answer
+```
+
+This is RAG.
+
+---
+
+# RAG in Our API Test Case Generator
+
+Suppose our company has API documentation:
+
+```text
+User API Documentation
+
+Endpoint:
+POST /api/users
+
+Validation Rules:
+- Name is required
+- Email is required
+- Email must be unique
+- Age must be greater than 18
+
+Success Response:
+200 OK
+
+Error Responses:
+400 Bad Request
+409 Conflict
+```
+
+Now the user asks:
+
+```text
+Generate test cases for POST /api/users.
+```
+
+Instead of asking the LLM without context, our application first retrieves the relevant API documentation.
+
+```text
+User Question
+      ↓
+Search API Documentation
+      ↓
+Relevant Information
+      ↓
+LLM
+      ↓
+Test Cases
+```
+
+This is RAG.
+
+---
+
+# Simple Definition to Remember
+
+```text
+RAG = Retrieve relevant information + Generate answer
+```
+
+Or:
+
+```text
+Search First
+     ↓
+Give Context
+     ↓
+Ask AI
+```
+
+---
+
+# 2. Why do we need RAG?
+
+This is one of the most important questions.
+
+## Problem with a normal LLM
+
+An LLM has been trained on a huge amount of data.
+
+But your company's private information may not be part of its training data.
+
+For example:
+
+```text
+Your Company API Documentation
+Your Internal Business Rules
+Your Swagger Files
+Your Database Documentation
+Your Internal Processes
+Your Product Rules
+```
+
+The LLM may not know these things.
+
+---
+
+# Example Without RAG
+
+Suppose we ask:
+
+```text
+Generate test cases for our User API.
+```
+
+The LLM may generate generic test cases:
+
+```text
+1. Valid user
+2. Invalid email
+3. Missing name
+4. Invalid age
+```
+
+These might be useful, but they may not match our actual API.
+
+---
+
+# Example With RAG
+
+Suppose our actual API documentation says:
+
+```text
+POST /api/users
+
+Rules:
+
+- Name is required
+- Email is required
+- Email must be unique
+- Age must be >= 18
+- User status defaults to Active
+- Duplicate email returns 409
+```
+
+RAG retrieves this information and provides it to the LLM.
+
+Now the AI can generate:
+
+```text
+TC01:
+Create user with valid name, email and age.
+
+Expected:
+200 OK
+
+TC02:
+Create user with duplicate email.
+
+Expected:
+409 Conflict
+
+TC03:
+Create user with age = 17.
+
+Expected:
+400 Bad Request
+
+TC04:
+Create user without name.
+
+Expected:
+400 Bad Request
+
+TC05:
+Verify default user status is Active.
+```
+
+These test cases are much more relevant to our actual application.
+
+---
+
+# Main Reasons We Need RAG
+
+## 1. Use Private / Company Data
+
+RAG allows the application to retrieve information from your own data sources.
+
+Examples:
+
+```text
+Company Documentation
+Swagger/OpenAPI
+PDF
+Word Documents
+Database
+Knowledge Base
+Confluence
+SharePoint
+Internal APIs
+```
+
+---
+
+## 2. Provide Up-to-Date Information
+
+Suppose your API validation rule changes.
+
+Old rule:
+
+```text
+Age >= 18
+```
+
+New rule:
+
+```text
+Age >= 21
+```
+
+If the latest documentation is stored in your knowledge base, RAG can retrieve the updated rule.
+
+The LLM doesn't necessarily need to be retrained.
+
+---
+
+## 3. Reduce Hallucination
+
+Without relevant context:
+
+```text
+LLM
+ ↓
+May Guess
+ ↓
+Potential Hallucination
+```
+
+With relevant context:
+
+```text
+Relevant Documentation
+        ↓
+      LLM
+        ↓
+Grounded Response
+```
+
+RAG doesn't guarantee zero hallucinations, but it can significantly improve grounding when retrieval and context are good.
+
+---
+
+## 4. Avoid Retraining the Model
+
+If your company has:
+
+```text
+10,000 API documents
+```
+
+you don't necessarily need to train a new model every time the documentation changes.
+
+Instead:
+
+```text
+Update Documents
+      ↓
+Update Knowledge Base
+      ↓
+RAG Retrieves Relevant Information
+```
+
+---
+
+# Simple Analogy
+
+Think about an exam.
+
+### Without RAG
+
+You ask a student:
+
+> "Answer this question from memory."
+
+The student may remember incorrectly.
+
+### With RAG
+
+You give the student the relevant textbook page:
+
+```text
+Question
+   +
+Relevant textbook page
+   ↓
+Answer
+```
+
+That's the basic idea of RAG.
+
+---
+
+# Interview Definition
+
+> RAG allows an LLM application to retrieve relevant information from external or private data sources and provide that information as context to the LLM before generating the response. It helps applications provide more relevant and grounded answers without requiring model retraining.
+
+---
+
+# 3. RAG vs Fine-Tuning
+
+This is a **very common interview question**.
+
+At first, RAG and Fine-Tuning may look similar because both can improve an AI application's behavior.
+
+But they solve different problems.
+
+---
+
+# What is Fine-Tuning?
+
+## Simple Definition
+
+> **Fine-tuning means taking an existing AI model and training it further using a specific dataset so that it behaves better for a particular task or style.**
+
+Think:
+
+```text
+Existing Model
+      ↓
+Additional Training
+      ↓
+Specialized Model
+```
+
+---
+
+# Simple Example
+
+Suppose we have a general LLM.
+
+We want it to consistently generate test cases in our company's specific format.
+
+We could provide many examples:
+
+```text
+Input API → Expected Test Case Format
+
+Input API → Expected Test Case Format
+
+Input API → Expected Test Case Format
+
+Input API → Expected Test Case Format
+```
+
+The model can be fine-tuned to better follow that pattern.
+
+---
+
+# RAG vs Fine-Tuning
+
+The easiest way to remember:
+
+> **RAG gives the model information.**
+
+> **Fine-tuning changes how the model behaves.**
+
+---
+
+## Example
+
+Suppose your company has:
+
+```text
+10,000 API documents
+```
+
+and you want the AI to know the latest API rules.
+
+Use:
+
+```text
+RAG
+```
+
+because the information can change frequently.
+
+---
+
+Suppose you want the AI to always produce test cases in a very specific style:
+
+```json
+{
+  "testCaseId": "TC001",
+  "title": "Valid User",
+  "category": "Positive",
+  "request": {},
+  "expectedStatusCode": 200
+}
+```
+
+and you have many examples of this format.
+
+Fine-tuning may be useful for teaching the model a particular behavior/style.
+
+---
+
+# Comparison Table
+
+| Feature | RAG | Fine-Tuning |
+|---|---|---|
+| Main purpose | Provide relevant information | Change model behavior |
+| Uses external data at runtime | Yes | Not necessarily |
+| Good for private/company knowledge | Yes | Possible, but often not the first choice |
+| Good for frequently changing information | Yes | Not ideal |
+| Requires retraining | No | Yes |
+| Can reduce hallucination | Yes, when retrieval is good | Not primarily designed for this |
+| Updates knowledge | Update documents/vector store | Usually requires another training process |
+| Implementation complexity | Moderate | Higher |
+| Cost | Usually lower | Can be higher |
+| Best use case | Knowledge / facts / documents | Behavior / style / specialized task |
+
+---
+
+# Simple Example
+
+## RAG
+
+```text
+Question:
+What is the validation rule for User API?
+
+        ↓
+
+Search Company Documentation
+
+        ↓
+
+"Age must be greater than 18"
+
+        ↓
+
+LLM
+
+        ↓
+
+Answer
+```
+
+---
+
+## Fine-Tuning
+
+```text
+Training Examples
+       ↓
+Fine-Tune Model
+       ↓
+Specialized Model
+       ↓
+Generate output in desired style
+```
+
+---
+
+# Which One Should We Use for Our POC?
+
+For our **API Test Case Generator**, RAG is a very good choice.
+
+Why?
+
+Because we want to provide:
+
+```text
+Swagger/OpenAPI
+API Documentation
+Validation Rules
+Business Rules
+Existing Test Cases
+API Examples
+```
+
+to the AI.
+
+These are **knowledge/data problems**, so RAG fits very well.
+
+---
+
+# Interview Answer
+
+If the interviewer asks:
+
+> "RAG vs Fine-tuning?"
+
+You can answer:
+
+> **RAG is mainly used to provide external or private knowledge to an LLM at runtime, while fine-tuning is used to adapt the model's behavior, style, or performance for a specific task. For frequently changing company data such as API documentation, RAG is generally more suitable because we can update the knowledge base without retraining the model.**
+
+---
+
+# 4. How Does RAG Work?
+
+This is probably the **most important RAG question**.
+
+At a high level:
+
+```text
+Documents
+    ↓
+Chunking
+    ↓
+Embeddings
+    ↓
+Vector Database
+    ↓
+User Question
+    ↓
+Embedding
+    ↓
+Similarity Search
+    ↓
+Relevant Chunks
+    ↓
+Prompt + Context
+    ↓
+LLM
+    ↓
+Answer
+```
+
+Let's understand each step.
+
+---
+
+# Step 1: Collect Documents
+
+First, we need data.
+
+For our project, this could be:
+
+```text
+Swagger/OpenAPI files
+API Documentation
+Validation Rules
+Business Rules
+Existing Test Cases
+README files
+```
+
+Example:
+
+```text
+User API Documentation
+----------------------
+
+POST /api/users
+
+Rules:
+- Name is required
+- Email is required
+- Email must be unique
+- Age >= 18
+```
+
+---
+
+# Step 2: Chunking
+
+Large documents are divided into smaller pieces.
+
+This process is called:
+
+```text
+Chunking
+```
+
+Example:
+
+```text
+Large API Documentation
+          ↓
+     Split into pieces
+          ↓
+Chunk 1
+Chunk 2
+Chunk 3
+Chunk 4
+```
+
+We will explain chunking in detail in the next section.
+
+---
+
+# Step 3: Generate Embeddings
+
+Each chunk is converted into a numerical representation called an **embedding**.
+
+```text
+Chunk
+  ↓
+Embedding Model
+  ↓
+Vector
+```
+
+Conceptually:
+
+```text
+"Email is required"
+        ↓
+[0.12, -0.45, 0.78, ...]
+```
+
+---
+
+# Step 4: Store Embeddings
+
+The embeddings are stored in a **Vector Database**.
+
+Conceptually:
+
+```text
+Chunk
++
+Embedding
++
+Metadata
+       ↓
+Vector Database
+```
+
+Examples of vector databases include:
+
+- Azure AI Search
+- Pinecone
+- Qdrant
+- Weaviate
+- Milvus
+- PostgreSQL with pgvector
+- Elasticsearch
+
+For a .NET/Azure-oriented application, **Azure AI Search** can be a natural option to explore.
+
+---
+
+# Step 5: User Asks a Question
+
+For example:
+
+```text
+Generate test cases for mandatory fields in User API.
+```
+
+---
+
+# Step 6: Convert User Question into Embedding
+
+The question is converted into an embedding too.
+
+```text
+User Question
+      ↓
+Embedding Model
+      ↓
+Query Vector
+```
+
+---
+
+# Step 7: Similarity Search
+
+The system searches the vector database for information that is semantically similar to the user's question.
+
+For example:
+
+```text
+User Question:
+"Generate test cases for mandatory fields."
+
+        ↓
+
+Vector Search
+
+        ↓
+
+Retrieved Information:
+
+"Name is required."
+
+"Email is required."
+```
+
+---
+
+# Step 8: Build the Prompt
+
+Now we combine:
+
+```text
+User Question
+      +
+Retrieved Context
+      +
+Instructions
+```
+
+Example:
+
+```text
+You are an expert API QA engineer.
+
+User Request:
+Generate test cases for mandatory fields.
+
+Relevant API Documentation:
+- Name is required.
+- Email is required.
+- Email must be unique.
+
+Generate positive and negative test cases.
+
+Return JSON.
+```
+
+---
+
+# Step 9: Send to LLM
+
+Now the LLM receives the prompt.
+
+```text
+Prompt
+  +
+Relevant Context
+      ↓
+     LLM
+      ↓
+Generated Test Cases
+```
+
+---
+
+# Step 10: Return the Result
+
+The LLM may return:
+
+```json
+[
+  {
+    "testCaseId": "TC001",
+    "title": "Create user without name",
+    "type": "Negative",
+    "expectedStatusCode": 400
+  },
+  {
+    "testCaseId": "TC002",
+    "title": "Create user without email",
+    "type": "Negative",
+    "expectedStatusCode": 400
+  }
+]
+```
+
+---
+
+# Complete RAG Flow
+
+```text
+                    DOCUMENTS
+                        |
+                        v
+                    Chunking
+                        |
+                        v
+                Embedding Model
+                        |
+                        v
+                Vector Database
+                        |
+                        |
+                   USER QUERY
+                        |
+                        v
+                Query Embedding
+                        |
+                        v
+                Similarity Search
+                        |
+                        v
+                Relevant Chunks
+                        |
+                        v
+              Prompt + Context
+                        |
+                        v
+                       LLM
+                        |
+                        v
+                Generated Response
+```
+
+---
+
+# 5. What is Chunking?
+
+## Simple Definition
+
+> **Chunking means breaking a large document into smaller, meaningful pieces before creating embeddings and storing them for retrieval.**
+
+In simple words:
+
+> **Large document → Small pieces**
+
+---
+
+# Why Do We Need Chunking?
+
+Imagine you have a 100-page API documentation document.
+
+You don't want to send the entire document to the LLM every time the user asks a question.
+
+Instead, we divide it into smaller pieces.
+
+```text
+100 Page Document
+        ↓
+     Chunking
+        ↓
+Chunk 1
+Chunk 2
+Chunk 3
+Chunk 4
+...
+Chunk 100
+```
+
+Now the system can retrieve only the relevant chunks.
+
+---
+
+# Example
+
+Suppose we have:
+
+```text
+User API Documentation
+
+Section 1:
+Authentication
+
+Section 2:
+POST /api/users
+
+Section 3:
+GET /api/users
+
+Section 4:
+PUT /api/users/{id}
+
+Section 5:
+DELETE /api/users/{id}
+
+Section 6:
+Error Handling
+```
+
+We can create chunks such as:
+
+```text
+Chunk 1:
+Authentication information
+
+Chunk 2:
+POST /api/users information
+
+Chunk 3:
+GET /api/users information
+
+Chunk 4:
+PUT /api/users/{id} information
+
+Chunk 5:
+DELETE /api/users/{id} information
+
+Chunk 6:
+Error handling information
+```
+
+---
+
+# Why Small Chunks Help
+
+Suppose the user asks:
+
+```text
+Generate test cases for PUT /api/users/{id}.
+```
+
+We don't need:
+
+```text
+Authentication documentation
+POST documentation
+GET documentation
+DELETE documentation
+```
+
+We mainly need:
+
+```text
+PUT /api/users/{id}
+```
+
+So the vector search can retrieve the relevant chunk.
+
+```text
+User Question
+      ↓
+Vector Search
+      ↓
+PUT API Chunk
+      ↓
+LLM
+      ↓
+Test Cases
+```
+
+This saves:
+
+- Tokens
+- Processing
+- Cost
+- Context space
+
+And improves relevance.
+
+---
+
+# Chunking Example
+
+Suppose we have:
+
+```text
+Chunk 1:
+POST /api/users
+
+Name is required.
+Email is required.
+Age must be >= 18.
+```
+
+```text
+Chunk 2:
+GET /api/users
+
+Returns all active users.
+```
+
+```text
+Chunk 3:
+PUT /api/users/{id}
+
+Email cannot be changed.
+Name can be updated.
+```
+
+User asks:
+
+```text
+Can email be changed using PUT API?
+```
+
+The system retrieves:
+
+```text
+Chunk 3
+```
+
+because it is the most relevant information.
+
+---
+
+# Chunk Size
+
+Chunking isn't simply:
+
+```text
+Every 100 characters
+```
+
+or:
+
+```text
+Every 500 words
+```
+
+The goal is to create **meaningful chunks**.
+
+For example, this is a bad chunk:
+
+```text
+Chunk:
+POST /api/users
+
+Name is required.
+
+Email is
+```
+
+The information is incomplete.
+
+A better chunk would contain the complete logical section:
+
+```text
+POST /api/users
+
+Name is required.
+Email is required.
+Age must be >= 18.
+
+Success:
+200 OK
+
+Errors:
+400 Bad Request
+409 Conflict
+```
+
+---
+
+# Overlapping Chunks
+
+Sometimes chunks can overlap.
+
+Example:
+
+```text
+Chunk 1:
+Name is required.
+Email is required.
+Age must be >= 18.
+
+Chunk 2:
+Age must be >= 18.
+Email must be unique.
+Duplicate email returns 409.
+```
+
+Notice:
+
+```text
+Age must be >= 18.
+```
+
+appears in both chunks.
+
+This is called **chunk overlap**.
+
+Overlap can help preserve context that might otherwise be lost at chunk boundaries.
+
+---
+
+# Simple Chunking Analogy
+
+Imagine a large book.
+
+Instead of giving the entire book to someone and asking:
+
+> "Find information about Chapter 5."
+
+You create smaller sections:
+
+```text
+Chapter 1
+Chapter 2
+Chapter 3
+Chapter 4
+Chapter 5
+...
+```
+
+Then you directly retrieve Chapter 5.
+
+That's the basic idea behind chunking.
+
+---
+
+# Interview Definition
+
+> Chunking is the process of splitting large documents into smaller meaningful pieces before generating embeddings. It helps the retrieval system find relevant information and reduces the amount of unnecessary context sent to the LLM.
+
+---
+
+# 6. Complete RAG Flow
+
+Let's connect everything together.
+
+```text
+                  SOURCE DOCUMENTS
+                         |
+                         v
+                    CHUNKING
+                         |
+                         v
+                 EMBEDDING MODEL
+                         |
+                         v
+                  VECTOR DATABASE
+                         |
+                         |
+                  USER QUESTION
+                         |
+                         v
+                 QUERY EMBEDDING
+                         |
+                         v
+                 SIMILARITY SEARCH
+                         |
+                         v
+                  RELEVANT CHUNKS
+                         |
+                         v
+                PROMPT + CONTEXT
+                         |
+                         v
+                        LLM
+                         |
+                         v
+                 GENERATED RESPONSE
+```
+
+---
+
+# 7. RAG Example for API Test Case Generator
+
+Let's design our POC conceptually.
+
+## Step 1: Input
+
+Our application receives an API definition:
+
+```json
+{
+  "method": "POST",
+  "endpoint": "/api/users",
+  "request": {
+    "name": "string",
+    "email": "string",
+    "age": "integer"
+  }
+}
+```
+
+---
+
+## Step 2: Documentation
+
+We have additional API rules:
+
+```text
+User API Rules:
+
+Name:
+- Required
+- Maximum length: 100
+
+Email:
+- Required
+- Must be valid
+- Must be unique
+
+Age:
+- Required
+- Must be >= 18
+
+Duplicate email:
+- Returns 409 Conflict
+```
+
+---
+
+## Step 3: Chunking
+
+We divide the documentation into meaningful chunks.
+
+```text
+Chunk 1:
+User API basic information.
+
+Chunk 2:
+Name validation.
+
+Chunk 3:
+Email validation.
+
+Chunk 4:
+Age validation.
+
+Chunk 5:
+Error handling.
+```
+
+---
+
+## Step 4: Embeddings
+
+Each chunk is converted into a vector.
+
+```text
+Chunk 1 → Vector 1
+Chunk 2 → Vector 2
+Chunk 3 → Vector 3
+Chunk 4 → Vector 4
+Chunk 5 → Vector 5
+```
+
+---
+
+## Step 5: Store in Vector Database
+
+```text
+Vector Database
+
+Vector 1 → User API
+Vector 2 → Name validation
+Vector 3 → Email validation
+Vector 4 → Age validation
+Vector 5 → Error handling
+```
+
+---
+
+## Step 6: User Request
+
+User asks:
+
+```text
+Generate negative test cases for email validation.
+```
+
+---
+
+## Step 7: Query Embedding
+
+The question is converted into a vector.
+
+```text
+"Generate negative test cases for email validation."
+                    |
+                    v
+              Query Vector
+```
+
+---
+
+## Step 8: Similarity Search
+
+The system searches the vector database.
+
+It may retrieve:
+
+```text
+Chunk 3:
+
+Email:
+- Required
+- Must be valid
+- Must be unique
+```
+
+and:
+
+```text
+Chunk 5:
+
+Duplicate email:
+- Returns 409 Conflict
+```
+
+---
+
+## Step 9: Prompt
+
+The application creates:
+
+```text
+You are an expert API QA engineer.
+
+Generate negative test cases for email validation.
+
+Relevant API Context:
+
+Email:
+- Required
+- Must be valid
+- Must be unique
+
+Duplicate email:
+- Returns 409 Conflict
+
+Return JSON.
+```
+
+---
+
+## Step 10: LLM
+
+The prompt is sent to the LLM.
+
+```text
+Prompt
+  +
+Retrieved Context
+       |
+       v
+      LLM
+       |
+       v
+Test Cases
+```
+
+---
+
+## Step 11: Output
+
+The LLM could return:
+
+```json
+[
+  {
+    "testCaseId": "TC001",
+    "title": "Email is missing",
+    "type": "Negative",
+    "expectedStatusCode": 400
+  },
+  {
+    "testCaseId": "TC002",
+    "title": "Invalid email format",
+    "type": "Negative",
+    "expectedStatusCode": 400
+  },
+  {
+    "testCaseId": "TC003",
+    "title": "Duplicate email",
+    "type": "Negative",
+    "expectedStatusCode": 409
+  }
+]
+```
+
+---
+
+# 8. Interview Questions and Answers
+
+## Q1. What is RAG?
+
+### Answer
+
+> RAG stands for Retrieval-Augmented Generation. It is a technique where an application retrieves relevant information from external or private data sources and provides that information as context to an LLM before generating the response.
+
+---
+
+## Q2. Why do we need RAG?
+
+### Answer
+
+> We use RAG when the LLM needs access to private, domain-specific, or frequently changing information. It allows us to provide relevant external knowledge at runtime without retraining the model and can help reduce hallucinations.
+
+---
+
+## Q3. RAG vs Fine-Tuning?
+
+### Answer
+
+> RAG is mainly used to provide external knowledge or context to an LLM, while fine-tuning is used to adapt the model's behavior, style, or performance for a specific task. For frequently changing company information such as API documentation, RAG is generally more suitable.
+
+---
+
+## Q4. How does RAG work?
+
+### Answer
+
+> In a typical RAG system, documents are first split into chunks, embeddings are generated for those chunks and stored in a vector database. When a user asks a question, the question is converted into an embedding and a similarity search retrieves relevant chunks. Those chunks are then added to the prompt and sent to the LLM to generate the final response.
+
+---
+
+## Q5. What is Chunking?
+
+### Answer
+
+> Chunking is the process of splitting large documents into smaller meaningful pieces before generating embeddings. It allows the retrieval system to find relevant information more accurately and prevents unnecessary information from being sent to the LLM.
+
+---
+
+# 9. Quick Revision
+
+## RAG
+
+```text
+Retrieve relevant information
++
+Generate answer
+```
+
+---
+
+## Why RAG?
+
+```text
+Private Data
++
+Latest Information
++
+Domain Knowledge
++
+Better Grounding
+```
+
+---
+
+## RAG vs Fine-Tuning
+
+```text
+RAG
+↓
+Give the model information
+
+Fine-Tuning
+↓
+Change/adapt model behavior
+```
+
+---
+
+## How RAG Works
+
+```text
+Documents
+   ↓
+Chunking
+   ↓
+Embeddings
+   ↓
+Vector Database
+   ↓
+User Question
+   ↓
+Query Embedding
+   ↓
+Similarity Search
+   ↓
+Relevant Chunks
+   ↓
+Prompt + Context
+   ↓
+LLM
+   ↓
+Answer
+```
+
+---
+
+## Chunking
+
+```text
+Large Document
+      ↓
+Small Meaningful Pieces
+```
+
+---
+
+# Final Memory Trick
+
+Remember RAG using these 5 words:
+
+```text
+RAG
+
+1. Split
+   ↓
+2. Embed
+   ↓
+3. Store
+   ↓
+4. Retrieve
+   ↓
+5. Generate
+```
+
+Or:
+
+```text
+Documents
+    ↓
+Chunk
+    ↓
+Embedding
+    ↓
+Vector DB
+    ↓
+Retrieve
+    ↓
+LLM
+    ↓
+Answer
+```
+
+---
+
+# RAG in One Sentence
+
+> **RAG is a technique where we retrieve relevant information from our own data and give it to an LLM as context so that the LLM can generate a more relevant and grounded response.**
+
+---
+
+# Our API Test Case Generator
+
+The complete idea is:
+
+```text
+              API DOCUMENTATION
+                      |
+                      v
+                  CHUNKING
+                      |
+                      v
+                 EMBEDDINGS
+                      |
+                      v
+                VECTOR DB
+                      |
+                      |
+                   USER
+                      |
+                      v
+            "Generate test cases
+             for User API"
+                      |
+                      v
+             QUERY EMBEDDING
+                      |
+                      v
+            SIMILARITY SEARCH
+                      |
+                      v
+             RELEVANT API RULES
+                      |
+                      v
+              PROMPT + CONTEXT
+                      |
+                      v
+                     LLM
+                      |
+                      v
+             GENERATED TEST CASES
+                      |
+                      v
+                    USER
+```
+
+This architecture will be the foundation of our **GenAI-powered .NET Core API Test Case Generator POC**.
+
+---
+
+# Next Concepts to Learn
+
+After understanding RAG, the next concepts should be:
+
+```text
+1. Vector Database
+        ↓
+2. Similarity Search
+        ↓
+3. Cosine Similarity
+        ↓
+4. Embedding Models
+        ↓
+5. Chunking Strategies
+        ↓
+6. RAG Pipeline
+        ↓
+7. RAG Evaluation
+        ↓
+8. Prompt + Retrieved Context
+        ↓
+9. Structured JSON Output
+        ↓
+10. Build RAG-based Test Case Generator
+```
+
+Once these are clear, you will be able to explain the complete RAG architecture confidently in a GenAI interview.
+
