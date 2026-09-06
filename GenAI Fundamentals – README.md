@@ -3222,3 +3222,1110 @@ After understanding RAG, the next concepts should be:
 
 Once these are clear, you will be able to explain the complete RAG architecture confidently in a GenAI interview.
 
+# RAG Advanced Concepts
+
+This document explains important RAG concepts required for the **GenAI-powered API Test Case Generator** POC.
+
+---
+
+# 1. How do you decide chunk size?
+
+## Simple Explanation
+
+**Chunk size means how much text we put into one chunk before creating its embedding.**
+
+Suppose our API documentation contains:
+
+```text
+POST /api/users
+
+Request:
+{
+    "name": "John",
+    "email": "john@test.com",
+    "age": 25
+}
+
+Validation Rules:
+- Name is required
+- Email is required
+- Email must be valid
+- Age must be greater than or equal to 18
+
+Responses:
+200 - User created successfully
+409 - Email already exists
+```
+
+Instead of embedding the entire document as one large piece, we split it into smaller meaningful chunks.
+
+For example:
+
+```text
+Chunk 1:
+POST /api/users
+Request structure and fields
+
+Chunk 2:
+Validation rules:
+Name is required
+Email is required
+Age >= 18
+
+Chunk 3:
+Response codes:
+200 - Success
+409 - Duplicate email
+```
+
+## How do we decide the size?
+
+There is **no single perfect chunk size**.
+
+We consider:
+
+1. **Document type**
+2. **Amount of information in each section**
+3. **How users will search**
+4. **LLM context window**
+5. **Retrieval quality**
+
+For API documentation, I would generally prefer **logical/semantic chunks** rather than blindly splitting every N characters.
+
+For example:
+
+```text
+Endpoint Information
+        ↓
+Request Model
+        ↓
+Validation Rules
+        ↓
+Response Codes
+        ↓
+Business Rules
+```
+
+Each logical section can become a chunk.
+
+## Interview Answer
+
+> "I don't choose chunk size only based on a fixed number of tokens. I first look at the document structure and create semantic chunks that preserve related information. Then I experiment with chunk sizes and evaluate retrieval quality. The goal is to make chunks small enough for precise retrieval but large enough to preserve the required context."
+
+## Important Point
+
+```text
+Too Small
+   ↓
+Missing Context
+
+Too Large
+   ↓
+Irrelevant Information
+
+Optimal Chunk
+   ↓
+Relevant + Sufficient Context
+```
+
+---
+
+# 2. What is Chunk Overlap?
+
+## Simple Explanation
+
+**Chunk overlap means repeating some content between consecutive chunks.**
+
+Suppose we have:
+
+```text
+Chunk 1:
+Name is required.
+Email is required.
+Email must be valid.
+Age must be greater than 18.
+Duplicate email returns 409.
+```
+
+If we split it:
+
+```text
+Chunk 1:
+Name is required.
+Email is required.
+
+Chunk 2:
+Email must be valid.
+Age must be greater than 18.
+Duplicate email returns 409.
+```
+
+Some information can get separated from related information.
+
+With overlap:
+
+```text
+Chunk 1:
+Name is required.
+Email is required.
+Email must be valid.
+
+Chunk 2:
+Email must be valid.
+Age must be greater than 18.
+Duplicate email returns 409.
+```
+
+Here:
+
+```text
+"Email must be valid"
+```
+
+appears in both chunks.
+
+That is **chunk overlap**.
+
+## Why do we need it?
+
+Because important information may be located near the boundary of two chunks.
+
+Overlap helps preserve context.
+
+Typical approach:
+
+```text
+Chunk Size = 500 tokens
+Overlap = 50 tokens
+```
+
+This means the next chunk starts about 50 tokens before the previous chunk ends.
+
+## Interview Answer
+
+> "Chunk overlap is the amount of content shared between consecutive chunks. It helps preserve context when an important sentence or concept falls near a chunk boundary. I usually tune overlap based on the document structure and retrieval performance."
+
+---
+
+# 3. What is a Vector Database?
+
+## Simple Explanation
+
+A **vector database stores embeddings and allows us to search for semantically similar information.**
+
+Remember:
+
+```text
+Text
+ ↓
+Embedding Model
+ ↓
+Vector
+```
+
+For example:
+
+```text
+"Email is mandatory"
+```
+
+might become something conceptually like:
+
+```text
+[0.21, -0.45, 0.72, 0.18, ...]
+```
+
+The actual vector contains many dimensions.
+
+We store:
+
+```text
+Document Chunk
+      +
+Embedding
+      +
+Metadata
+```
+
+inside a vector database.
+
+Example:
+
+```text
+Vector DB
+
+ID: 101
+Text: "Email is required"
+Embedding: [0.21, -0.45, ...]
+Metadata:
+    endpoint = /api/users
+    method = POST
+```
+
+## Why do we need it?
+
+Suppose the user asks:
+
+```text
+Generate test cases for mandatory email validation.
+```
+
+The exact words might not exist in the document.
+
+The documentation says:
+
+```text
+Email must be provided.
+```
+
+Keyword search may not find an exact match.
+
+Vector search can understand that:
+
+```text
+"mandatory email"
+
+and
+
+"email must be provided"
+```
+
+have similar meanings.
+
+## Common Vector Databases
+
+Examples include:
+
+- Azure AI Search
+- Pinecone
+- Qdrant
+- Weaviate
+- Milvus
+- PostgreSQL with pgvector
+
+For your POC, you can start with a simple vector-store approach and later explain how it can be replaced by Azure AI Search or another production vector database.
+
+## Interview Answer
+
+> "A vector database is a database optimized for storing and searching vector embeddings. In a RAG system, I store document chunks along with their embeddings and metadata, and use similarity search to retrieve the most relevant chunks for the user's query."
+
+---
+
+# 4. What is Cosine Similarity?
+
+## Simple Explanation
+
+**Cosine similarity measures how similar two vectors are based on the angle between them.**
+
+In RAG:
+
+```text
+User Query
+    ↓
+Embedding
+    ↓
+Query Vector
+
+Document Chunk
+    ↓
+Embedding
+    ↓
+Document Vector
+```
+
+We compare:
+
+```text
+Query Vector
+      ↕
+Document Vector
+```
+
+Cosine similarity tells us how similar their meanings are.
+
+Conceptually:
+
+```text
+Very Similar
+     ↓
+Similarity ≈ 1
+
+Unrelated
+     ↓
+Similarity ≈ 0
+
+Opposite Direction
+     ↓
+Similarity ≈ -1
+```
+
+For many embedding/search scenarios, the practical focus is on ranking vectors by similarity rather than memorizing the formula.
+
+## Example
+
+User asks:
+
+```text
+Generate negative test cases for email validation.
+```
+
+Documents:
+
+```text
+Document A:
+Email is required.
+
+Document B:
+Customer address must contain city.
+
+Document C:
+Email must have a valid format.
+```
+
+Similarity might look like:
+
+```text
+Document A → 0.91
+Document C → 0.89
+Document B → 0.22
+```
+
+Therefore:
+
+```text
+A and C
+   ↓
+Highly Relevant
+
+B
+   ↓
+Not Relevant
+```
+
+## Interview Answer
+
+> "Cosine similarity measures the similarity between two vectors based on their orientation. In RAG, we compare the embedding of the user query with document embeddings and use the similarity score to retrieve the most relevant chunks."
+
+---
+
+# 5. What is Top-K?
+
+## Simple Explanation
+
+**Top-K means retrieving the K most relevant results.**
+
+Suppose we search our vector database.
+
+The search returns:
+
+```text
+Chunk 1 → 0.95
+Chunk 2 → 0.91
+Chunk 3 → 0.88
+Chunk 4 → 0.72
+Chunk 5 → 0.60
+```
+
+If:
+
+```text
+K = 3
+```
+
+we retrieve:
+
+```text
+Chunk 1
+Chunk 2
+Chunk 3
+```
+
+These are the **Top 3 most relevant chunks**.
+
+## In our POC
+
+User asks:
+
+```text
+Generate negative test cases for POST /api/users.
+```
+
+We might configure:
+
+```text
+Top-K = 5
+```
+
+The system retrieves the five most relevant chunks containing:
+
+```text
+API endpoint
+Request model
+Validation rules
+Business rules
+Response codes
+```
+
+Then those chunks are added to the LLM prompt.
+
+## What if K is too small?
+
+```text
+K = 1
+
+↓
+May miss important information
+```
+
+## What if K is too large?
+
+```text
+K = 20
+
+↓
+Too much irrelevant context
+↓
+More tokens
+↓
+Potentially lower answer quality
+```
+
+Therefore, **Top-K is a tuning parameter**.
+
+## Interview Answer
+
+> "Top-K defines how many of the most relevant chunks we retrieve from the vector store. I tune K based on retrieval quality, context size, latency and cost. A very small K can miss important context, while a very large K can introduce irrelevant information."
+
+---
+
+# 6. What is Hybrid Search?
+
+## Simple Explanation
+
+Hybrid search combines:
+
+```text
+Keyword Search
+        +
+Vector Search
+        ↓
+Better Retrieval
+```
+
+### Keyword Search
+
+Looks for exact words.
+
+Example:
+
+```text
+"409 Conflict"
+```
+
+If the document contains:
+
+```text
+Duplicate email returns 409 Conflict
+```
+
+keyword search is very effective.
+
+### Vector Search
+
+Looks for semantic meaning.
+
+Example:
+
+```text
+"email should not already exist"
+```
+
+Vector search may find:
+
+```text
+"Duplicate email returns 409"
+```
+
+even though the exact words are different.
+
+---
+
+## Hybrid Search Example
+
+User asks:
+
+```text
+What happens when the email already exists?
+```
+
+Keyword search may find:
+
+```text
+duplicate
+email
+409
+```
+
+Vector search may find:
+
+```text
+existing customer email
+duplicate user
+email uniqueness
+```
+
+Hybrid search combines both.
+
+```text
+User Query
+    ↓
+ ┌───────────────┐
+ │               │
+Keyword Search  Vector Search
+ │               │
+ └───────┬───────┘
+         ↓
+    Combine Results
+         ↓
+    Rank Results
+         ↓
+   Relevant Chunks
+```
+
+## Why is Hybrid Search useful?
+
+Because some searches depend heavily on **exact terms**, while others depend on **meaning**.
+
+For API documentation, hybrid search is especially useful for things like:
+
+```text
+HTTP status codes
+Endpoint names
+Class names
+Property names
+Error codes
+Business terminology
+```
+
+## Interview Answer
+
+> "Hybrid search combines lexical or keyword-based search with semantic vector search. Keyword search is useful for exact terms such as endpoint names, error codes and status codes, while vector search handles semantic similarity. Combining both generally improves retrieval quality."
+
+---
+
+# 7. How do you reduce hallucination?
+
+## Simple Explanation
+
+Hallucination means:
+
+```text
+AI gives information that is incorrect
+or unsupported by the provided data.
+```
+
+For example, our API actually has:
+
+```text
+name
+email
+age
+```
+
+But AI generates:
+
+```text
+phoneNumber
+address
+salary
+```
+
+That is a hallucination.
+
+---
+
+## How can we reduce it?
+
+### 1. Use RAG
+
+Give the LLM relevant API documentation.
+
+```text
+API Documentation
+       ↓
+Retrieval
+       ↓
+Relevant Context
+       ↓
+LLM
+```
+
+The model has actual information to work with.
+
+---
+
+### 2. Improve Retrieval
+
+If retrieval gives the wrong chunks, the LLM may generate the wrong answer.
+
+Therefore:
+
+```text
+Better Chunking
+      +
+Better Embeddings
+      +
+Better Search
+      +
+Correct Top-K
+      ↓
+Better Context
+      ↓
+Better Answer
+```
+
+---
+
+### 3. Use Strong Prompts
+
+Example:
+
+```text
+You are an API test case generator.
+
+Generate test cases only from the provided API specification.
+
+Do not invent fields, validations,
+status codes or business rules.
+
+If required information is missing,
+return "Insufficient information".
+```
+
+This is extremely useful for your POC.
+
+---
+
+### 4. Use Structured Output
+
+Instead of asking:
+
+```text
+Generate test cases.
+```
+
+ask for:
+
+```json
+{
+  "testCases": [
+    {
+      "id": "TC001",
+      "title": "...",
+      "type": "Negative",
+      "request": {},
+      "expectedStatusCode": 400,
+      "expectedResult": "..."
+    }
+  ]
+}
+```
+
+This makes the response more predictable and easier to validate.
+
+---
+
+### 5. Validate the Output
+
+After receiving the response:
+
+```text
+LLM Output
+    ↓
+JSON Validation
+    ↓
+Business Rule Validation
+    ↓
+Final Response
+```
+
+For example:
+
+```text
+Does the generated field exist
+in the API schema?
+
+YES → Accept
+NO  → Reject/flag
+```
+
+---
+
+### 6. Lower Temperature
+
+For test case generation, we generally want:
+
+```text
+Predictability
+      ↑
+Creativity
+      ↓
+```
+
+A lower temperature can reduce unnecessary randomness.
+
+However, **temperature alone does not solve hallucination**.
+
+---
+
+### 7. Tell the Model When Information Is Missing
+
+Instead of forcing the model to answer:
+
+```text
+If information is not available,
+say "Insufficient information".
+```
+
+This is much safer than allowing the model to guess.
+
+## Interview Answer
+
+> "I reduce hallucinations using a combination of techniques: RAG with high-quality retrieval, semantic chunking, appropriate Top-K, strong prompts that restrict the model to retrieved context, structured output, validation, and an explicit fallback when information is unavailable. I don't rely only on lowering temperature."
+
+---
+
+# 8. How do you evaluate RAG?
+
+This is a very important interview question.
+
+A RAG system has **two major parts**:
+
+```text
+Retrieval
+    +
+Generation
+```
+
+Therefore, we need to evaluate both.
+
+---
+
+# 8.1 Retrieval Evaluation
+
+The first question is:
+
+> Did we retrieve the correct information?
+
+Example:
+
+User asks:
+
+```text
+What happens when duplicate email is submitted?
+```
+
+Expected relevant document:
+
+```text
+Duplicate email → 409 Conflict
+```
+
+If our retriever returns:
+
+```text
+User address validation
+Age validation
+Pagination
+```
+
+then retrieval is poor.
+
+Important retrieval metrics include:
+
+### Precision
+
+Of the documents we retrieved, how many were actually relevant?
+
+```text
+Relevant Retrieved Documents
+----------------------------
+Total Retrieved Documents
+```
+
+### Recall
+
+Of all the relevant documents available, how many did we retrieve?
+
+```text
+Relevant Retrieved Documents
+----------------------------
+Total Relevant Documents
+```
+
+In simple terms:
+
+```text
+Precision → Did I retrieve mostly useful things?
+
+Recall → Did I find the important things?
+```
+
+---
+
+# 8.2 Generation Evaluation
+
+Once the correct context is retrieved, we ask:
+
+> Did the LLM generate a correct answer based on that context?
+
+For our API Test Case Generator:
+
+```text
+Retrieved Context:
+Email is required.
+Invalid email → 400.
+Duplicate email → 409.
+```
+
+Generated test cases should reflect those rules.
+
+We can evaluate:
+
+```text
+Correctness
+Relevance
+Completeness
+Groundedness
+Format correctness
+```
+
+---
+
+# 8.3 Groundedness / Faithfulness
+
+This is especially important.
+
+We ask:
+
+> Is the generated answer supported by the retrieved context?
+
+Example:
+
+Context says:
+
+```text
+Duplicate email → 409
+```
+
+AI says:
+
+```text
+Duplicate email → 409
+```
+
+Good.
+
+But if AI says:
+
+```text
+Duplicate email → 422
+```
+
+that is not grounded in the provided context.
+
+---
+
+# 8.4 End-to-End Evaluation
+
+For your POC, create a small evaluation dataset.
+
+Example:
+
+```text
+Question:
+Generate negative test cases for email validation.
+
+Expected information:
+- Email required
+- Email format validation
+- Duplicate email
+- 400 for invalid email
+- 409 for duplicate email
+```
+
+Run the RAG pipeline and compare:
+
+```text
+Expected Answer
+       ↓
+Generated Answer
+       ↓
+Evaluate
+```
+
+You can track:
+
+| Metric | What it tells us |
+|---|---|
+| Retrieval Precision | Are retrieved chunks relevant? |
+| Retrieval Recall | Are we finding important chunks? |
+| Faithfulness/Groundedness | Is the answer supported by context? |
+| Answer Relevance | Does the answer address the question? |
+| Completeness | Did we cover important requirements? |
+| JSON Validity | Is the output structurally valid? |
+
+---
+
+# 8.5 How I Would Evaluate Your API Test Case Generator
+
+For your POC, I would create around **20–30 predefined API scenarios**.
+
+Example:
+
+```text
+Scenario 1:
+POST /api/users
+Required fields
+
+Scenario 2:
+Email validation
+
+Scenario 3:
+Duplicate email
+
+Scenario 4:
+Age validation
+
+Scenario 5:
+Invalid request body
+```
+
+For each scenario, define expected test cases.
+
+Then measure:
+
+```text
+Retrieval Quality
+        ↓
+Correct Context?
+        ↓
+Generation Quality
+        ↓
+Correct Test Cases?
+        ↓
+Hallucination Rate
+        ↓
+JSON Validity
+```
+
+This makes your POC much more credible in an interview.
+
+---
+
+# Complete RAG Flow for Your POC
+
+```text
+                API Documentation
+                       ↓
+                   Chunking
+                       ↓
+                  Embeddings
+                       ↓
+                 Vector Database
+                       ↓
+                 ┌─────────────┐
+                 │             │
+             User Query        │
+                 ↓             │
+              Embedding        │
+                 ↓             │
+             Search/Retrieve ←─┘
+                 ↓
+              Top-K Chunks
+                 ↓
+          Build RAG Prompt
+                 ↓
+              Gemini LLM
+                 ↓
+        Structured JSON Output
+                 ↓
+          Validate Response
+                 ↓
+          Generated Test Cases
+```
+
+---
+
+# Quick Interview Revision
+
+## How do you decide chunk size?
+
+> I prefer semantic chunking based on document structure rather than blindly using a fixed size. I tune the size based on retrieval quality, context preservation, latency and token usage.
+
+## What is chunk overlap?
+
+> Chunk overlap is the amount of content shared between consecutive chunks. It helps preserve context around chunk boundaries.
+
+## What is a vector database?
+
+> A vector database stores embeddings and supports similarity search to retrieve semantically relevant information.
+
+## What is cosine similarity?
+
+> Cosine similarity measures how similar two vectors are based on their orientation. It is commonly used to compare query and document embeddings.
+
+## What is Top-K?
+
+> Top-K specifies how many of the most relevant chunks should be retrieved from the vector store.
+
+## What is hybrid search?
+
+> Hybrid search combines keyword-based search and semantic vector search to improve retrieval quality.
+
+## How do you reduce hallucination?
+
+> I use RAG, improve retrieval quality, provide strong prompts, restrict the model to retrieved context, use structured output, validate responses, and return a fallback when information is unavailable.
+
+## How do you evaluate RAG?
+
+> I evaluate both retrieval and generation. For retrieval I look at metrics such as precision and recall. For generation I evaluate relevance, faithfulness or groundedness, completeness and output correctness. For my API test case generator, I can additionally validate JSON structure and whether generated test cases are supported by the API specification.
+
+---
+
+# Easy Memory Trick
+
+Remember RAG using:
+
+```text
+CHUNK
+  ↓
+EMBED
+  ↓
+STORE
+  ↓
+SEARCH
+  ↓
+TOP-K
+  ↓
+PROMPT
+  ↓
+LLM
+  ↓
+VALIDATE
+```
+
+And remember RAG evaluation as:
+
+```text
+RETRIEVE
+    ↓
+Did I find the right information?
+
+GENERATE
+    ↓
+Did AI use that information correctly?
+```
+
+That is the core idea behind evaluating a RAG system.
+
