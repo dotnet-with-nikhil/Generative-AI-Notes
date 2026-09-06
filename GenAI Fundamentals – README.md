@@ -4329,3 +4329,1106 @@ Did AI use that information correctly?
 
 That is the core idea behind evaluating a RAG system.
 
+# AI Agents & Agentic AI
+
+This document explains:
+
+1. What is an AI Agent?
+2. Agent vs RAG
+3. Agent vs Traditional Workflow
+4. What is Tool Calling?
+5. What is Function Calling?
+6. What is Agent Memory?
+7. What is Multi-Agent Architecture?
+
+Examples are based on a **GenAI-powered API Test Case Generator**.
+
+---
+
+# 1. What is an AI Agent?
+
+## Simple Explanation
+
+An **AI Agent is an AI system that can understand a goal, decide what steps are required, use tools, perform actions, observe the results, and continue until the goal is completed.**
+
+The important difference is:
+
+```text
+Traditional AI:
+Question
+   ↓
+LLM
+   ↓
+Answer
+```
+
+An Agent can do:
+
+```text
+Goal
+ ↓
+Understand
+ ↓
+Plan
+ ↓
+Choose Tool
+ ↓
+Execute Tool
+ ↓
+Observe Result
+ ↓
+Decide Next Step
+ ↓
+Repeat if required
+ ↓
+Final Result
+```
+
+So an Agent is not just an LLM.
+
+It is more like:
+
+```text
+Agent =
+LLM
++
+Instructions
++
+Tools
++
+Decision Making
++
+Memory/State
++
+Execution
+```
+
+---
+
+# Example: API Test Case Generator
+
+Suppose you ask:
+
+```text
+Generate test cases for POST /api/users
+and verify whether the generated test cases
+cover all API validation rules.
+```
+
+A simple LLM might:
+
+```text
+Read API specification
+        ↓
+Generate test cases
+        ↓
+Return test cases
+```
+
+An Agent could do much more:
+
+```text
+User Goal
+   ↓
+Agent
+   ↓
+Read API specification
+   ↓
+Analyze request model
+   ↓
+Check validation rules
+   ↓
+Generate test cases
+   ↓
+Call API
+   ↓
+Observe response
+   ↓
+Compare expected vs actual
+   ↓
+Generate test report
+```
+
+The Agent is making decisions about **what to do next**.
+
+---
+
+# 2. Agent vs RAG
+
+This is a very common interview question.
+
+## RAG
+
+RAG mainly solves:
+
+> "How can I provide the LLM with relevant external information?"
+
+Flow:
+
+```text
+User Query
+    ↓
+Embedding
+    ↓
+Vector Search
+    ↓
+Retrieve Relevant Documents
+    ↓
+LLM
+    ↓
+Answer
+```
+
+RAG is primarily about **retrieving knowledge**.
+
+---
+
+# AI Agent
+
+An Agent solves a broader problem:
+
+> "How can AI accomplish a goal by deciding what actions to take?"
+
+Example:
+
+```text
+User:
+Generate and validate API test cases.
+```
+
+Agent:
+
+```text
+Understand Goal
+      ↓
+Retrieve API Documentation
+      ↓
+Generate Test Cases
+      ↓
+Call API
+      ↓
+Analyze Response
+      ↓
+Fix/Improve Test Cases
+      ↓
+Generate Final Report
+```
+
+---
+
+# RAG vs Agent
+
+| RAG | AI Agent |
+|---|---|
+| Retrieves information | Performs tasks |
+| Mainly knowledge-focused | Goal/action-focused |
+| Usually predictable flow | Can dynamically decide next step |
+| Uses retrieval | Can use multiple tools |
+| Usually one main generation step | Can involve multiple LLM/tool steps |
+| Good for Q&A | Good for complex tasks |
+
+### Important
+
+RAG and Agents are **not alternatives**.
+
+An Agent can use RAG as one of its tools.
+
+For example:
+
+```text
+                AI AGENT
+                   |
+       ┌───────────┼───────────┐
+       ↓           ↓           ↓
+   RAG Search   API Tool   Test Tool
+       |           |           |
+       ↓           ↓           ↓
+ API Docs      Call API    Execute Tests
+```
+
+---
+
+# Interview Answer
+
+> "RAG is primarily a retrieval technique that provides relevant external context to an LLM. An AI Agent is a goal-oriented system that can reason about the task, choose tools, execute actions, observe results and decide the next step. RAG can actually be one of the capabilities used by an Agent."
+
+---
+
+# 3. Agent vs Traditional Workflow
+
+This is another important distinction.
+
+## Traditional Workflow
+
+In a traditional workflow, **we define the steps beforehand**.
+
+Example:
+
+```text
+Step 1 → Get API documentation
+
+Step 2 → Generate test cases
+
+Step 3 → Save test cases
+
+Step 4 → Return result
+```
+
+The workflow is predefined.
+
+```text
+START
+  ↓
+Step 1
+  ↓
+Step 2
+  ↓
+Step 3
+  ↓
+END
+```
+
+If something unexpected happens, our code needs to explicitly handle it.
+
+---
+
+# AI Agent
+
+With an Agent, we give it a goal.
+
+For example:
+
+```text
+Generate high-quality test cases
+for this API and validate them.
+```
+
+The Agent can decide:
+
+```text
+Do I need API documentation?
+        ↓
+YES
+
+Retrieve documentation
+        ↓
+
+Do I need database information?
+        ↓
+YES
+
+Call database tool
+        ↓
+
+Do I need to test the API?
+        ↓
+YES
+
+Call API testing tool
+        ↓
+
+Are test cases complete?
+        ↓
+NO
+
+Generate additional test cases
+        ↓
+
+YES
+ ↓
+Finish
+```
+
+The path can change based on the results.
+
+---
+
+# Traditional Workflow vs Agent
+
+| Traditional Workflow | AI Agent |
+|---|---|
+| Steps predefined | Steps can be dynamically selected |
+| Mostly deterministic | More adaptive |
+| Developer controls flow | LLM/agent decides actions within constraints |
+| Easier to test | More complex to test |
+| Predictable | Less predictable |
+| Good for fixed processes | Good for dynamic tasks |
+| Usually lower complexity | Higher complexity |
+
+---
+
+# Important Interview Point
+
+Don't say:
+
+> "Agents are always better than workflows."
+
+That's incorrect.
+
+For a simple process:
+
+```text
+Get Data
+ ↓
+Transform Data
+ ↓
+Save Data
+```
+
+A traditional workflow is usually better.
+
+Use an Agent when the task requires:
+
+```text
+Dynamic decisions
++
+Multiple tools
++
+Uncertain steps
++
+Goal-oriented execution
+```
+
+---
+
+# 4. What is Tool Calling?
+
+## Simple Explanation
+
+**Tool calling means allowing an AI model/Agent to use external capabilities to perform actions or retrieve information.**
+
+An LLM itself cannot automatically:
+
+```text
+Call your database
+Call your API
+Send an email
+Read your internal system
+Execute code
+```
+
+We provide tools that it can invoke.
+
+For example:
+
+```text
+AI Agent
+   |
+   ├── SearchApiDocumentation()
+   ├── GetUserSchema()
+   ├── CallApi()
+   ├── ExecuteTest()
+   └── SaveTestCase()
+```
+
+The Agent decides which tool is required.
+
+---
+
+# Example
+
+User asks:
+
+```text
+Generate test cases for POST /api/users
+and execute them against the API.
+```
+
+Agent decides:
+
+```text
+1. Get API specification
+2. Generate test cases
+3. Call API
+4. Analyze response
+5. Generate report
+```
+
+It may call:
+
+```text
+GetApiSpecification()
+        ↓
+GenerateTestCases()
+        ↓
+ExecuteApiTest()
+        ↓
+GenerateReport()
+```
+
+This is **tool calling**.
+
+---
+
+# 5. What is Function Calling?
+
+Function calling is closely related to tool calling.
+
+## Simple Explanation
+
+Function calling allows an LLM to return a **structured request to invoke a predefined function**.
+
+For example, we define:
+
+```csharp
+GetApiSpecification(string endpoint)
+```
+
+The model doesn't execute the C# method directly.
+
+Instead, it can produce something conceptually like:
+
+```json
+{
+  "function": "GetApiSpecification",
+  "arguments": {
+    "endpoint": "/api/users"
+  }
+}
+```
+
+Our application receives this request and executes the actual C# function:
+
+```csharp
+var specification =
+    await GetApiSpecification("/api/users");
+```
+
+Then we send the result back to the model.
+
+---
+
+# Tool Calling vs Function Calling
+
+These terms are often used interchangeably, but you can explain the distinction like this:
+
+```text
+Function Calling
+      ↓
+Model requests a specific function
+      ↓
+Application executes it
+```
+
+Tool Calling is the broader concept:
+
+```text
+Tool Calling
+      ↓
+Can invoke functions/tools
+      ↓
+API
+Database
+Search
+Code execution
+Calculator
+etc.
+```
+
+Different AI platforms may use different terminology.
+
+---
+
+# Example in Your POC
+
+Suppose you expose:
+
+```csharp
+public async Task<ApiSpecification>
+    GetApiSpecification(string endpoint)
+```
+
+and:
+
+```csharp
+public async Task<ApiTestResult>
+    ExecuteApiTest(TestCase testCase)
+```
+
+The Agent can decide:
+
+```text
+User Goal
+   ↓
+Agent
+   ↓
+GetApiSpecification()
+   ↓
+Generate Test Cases
+   ↓
+ExecuteApiTest()
+   ↓
+Analyze Results
+   ↓
+Final Report
+```
+
+This is much more powerful than simply asking Gemini:
+
+```text
+"Generate test cases."
+```
+
+---
+
+# 6. What is Agent Memory?
+
+## Simple Explanation
+
+**Agent memory allows an Agent to retain information/state so that it can use it later.**
+
+Without memory:
+
+```text
+Conversation 1
+     ↓
+Agent forgets
+     ↓
+Conversation 2
+     ↓
+No previous context
+```
+
+With memory:
+
+```text
+Conversation 1
+     ↓
+Store important information
+     ↓
+Memory
+     ↓
+Conversation 2
+     ↓
+Retrieve previous information
+```
+
+---
+
+# Types of Agent Memory
+
+A simple way to explain memory is:
+
+## 1. Short-Term Memory
+
+Information needed during the current task/conversation.
+
+Example:
+
+```text
+User:
+Generate test cases for /api/users.
+
+Agent:
+What type?
+
+User:
+Negative tests only.
+```
+
+The Agent remembers:
+
+```text
+Endpoint = /api/users
+Test Type = Negative
+```
+
+during the current interaction.
+
+---
+
+## 2. Long-Term Memory
+
+Information that can be retained across interactions.
+
+Example:
+
+```text
+User prefers:
+- JSON test cases
+- Negative test cases
+- NUnit format
+```
+
+Later:
+
+```text
+Generate test cases for /api/orders.
+```
+
+The system can use those stored preferences.
+
+---
+
+# Memory in Your POC
+
+You could maintain:
+
+```text
+Agent Memory
+
+API:
+POST /api/users
+
+Previous Test Cases:
+TC001
+TC002
+TC003
+
+User Preference:
+JSON format
+
+Previous API Result:
+409 for duplicate email
+```
+
+Then the Agent can use that information during subsequent tasks.
+
+---
+
+# Important Point
+
+Memory does **not necessarily mean storing everything**.
+
+Good Agent systems selectively store useful information.
+
+```text
+Conversation
+     ↓
+Identify Important Information
+     ↓
+Store Relevant Memory
+```
+
+---
+
+# 7. What is Multi-Agent Architecture?
+
+## Simple Explanation
+
+A **Multi-Agent Architecture uses multiple specialized AI Agents instead of one Agent doing everything.**
+
+Think of it like a software team.
+
+Instead of:
+
+```text
+One person does everything
+```
+
+we have:
+
+```text
+Developer
+Tester
+Reviewer
+Documentation Specialist
+```
+
+Each has a specific responsibility.
+
+---
+
+# Example: Multi-Agent API Testing System
+
+We could create:
+
+### Agent 1 – API Analyzer
+
+Responsible for:
+
+```text
+Read API specification
+        ↓
+Understand endpoint
+        ↓
+Identify validations
+        ↓
+Identify business rules
+```
+
+---
+
+### Agent 2 – Test Case Generator
+
+Responsible for:
+
+```text
+API specification
+      ↓
+Generate test cases
+```
+
+---
+
+### Agent 3 – Test Executor
+
+Responsible for:
+
+```text
+Test Cases
+    ↓
+Call API
+    ↓
+Capture responses
+```
+
+---
+
+### Agent 4 – Test Reviewer
+
+Responsible for:
+
+```text
+Generated Test Cases
+        ↓
+Review Coverage
+        ↓
+Identify Missing Cases
+        ↓
+Suggest Improvements
+```
+
+---
+
+### Agent 5 – Report Generator
+
+Responsible for:
+
+```text
+Execution Results
+       ↓
+Analyze
+       ↓
+Generate Test Report
+```
+
+---
+
+# Multi-Agent Architecture
+
+```text
+                    User
+                      |
+                      ↓
+              Orchestrator Agent
+                      |
+        ┌─────────────┼─────────────┐
+        ↓             ↓             ↓
+ API Analyzer    Test Generator   Test Executor
+        |             |             |
+        └─────────────┼─────────────┘
+                      ↓
+                Review Agent
+                      ↓
+                Report Agent
+                      ↓
+                Final Result
+```
+
+The **Orchestrator** coordinates the different agents.
+
+---
+
+# Why use Multi-Agent Architecture?
+
+Because complex tasks can be divided into specialized responsibilities.
+
+For example:
+
+```text
+One Agent:
+Analyze API
+Generate tests
+Execute tests
+Review tests
+Generate report
+```
+
+can become difficult to manage.
+
+Instead:
+
+```text
+Agent 1 → Analyze
+Agent 2 → Generate
+Agent 3 → Execute
+Agent 4 → Review
+Agent 5 → Report
+```
+
+Each Agent has a clear responsibility.
+
+---
+
+# Multi-Agent vs Single Agent
+
+| Single Agent | Multi-Agent |
+|---|---|
+| One Agent handles task | Multiple specialized Agents |
+| Simpler architecture | More complex |
+| Easier to build | More coordination required |
+| Good for smaller tasks | Good for complex workflows |
+| Lower orchestration overhead | Higher orchestration overhead |
+
+---
+
+# Complete Agentic API Testing Architecture
+
+A more advanced version of your POC could look like this:
+
+```text
+                         User
+                           |
+                           ↓
+                   Orchestrator Agent
+                           |
+             ┌─────────────┼──────────────┐
+             ↓             ↓              ↓
+       RAG/Search      API Analyzer    Memory
+             |             |
+             ↓             ↓
+        API Docs      API Rules
+                           |
+                           ↓
+                  Test Generator Agent
+                           |
+                           ↓
+                    Test Cases
+                           |
+                           ↓
+                  Test Executor Agent
+                           |
+                           ↓
+                     API Response
+                           |
+                           ↓
+                   Review Agent
+                           |
+                  ┌────────┴────────┐
+                  ↓                 ↓
+               PASS              FAIL
+                  |                 |
+                  ↓                 ↓
+             Final Report     Generate/Fix
+                                  Tests
+                                     |
+                                     └────→ Execute Again
+```
+
+This is where your POC can evolve from:
+
+```text
+Simple GenAI
+```
+
+to:
+
+```text
+RAG Application
+```
+
+and eventually:
+
+```text
+Agentic AI Application
+```
+
+---
+
+# How All These Concepts Connect
+
+The easiest way to understand the progression is:
+
+```text
+LLM
+ ↓
+Can generate text
+```
+
+Then:
+
+```text
+LLM + Prompt
+ ↓
+Better controlled generation
+```
+
+Then:
+
+```text
+LLM + RAG
+ ↓
+Can use external knowledge
+```
+
+Then:
+
+```text
+LLM + Tools
+ ↓
+Can perform actions
+```
+
+Then:
+
+```text
+LLM + Tools + Planning/Decision Making
+ ↓
+AI Agent
+```
+
+Then:
+
+```text
+Multiple Agents
+       +
+Specialized Responsibilities
+       ↓
+Multi-Agent System
+```
+
+---
+
+# Your API Test Case Generator Evolution
+
+## Level 1 – Basic GenAI
+
+```text
+API Details
+    ↓
+Gemini
+    ↓
+Test Cases
+```
+
+---
+
+## Level 2 – RAG
+
+```text
+API Documentation
+       ↓
+Vector DB
+       ↓
+Relevant API Information
+       ↓
+Gemini
+       ↓
+Test Cases
+```
+
+---
+
+## Level 3 – Agent
+
+```text
+User Goal
+   ↓
+Agent
+   ↓
+Retrieve API Documentation
+   ↓
+Generate Test Cases
+   ↓
+Call API
+   ↓
+Analyze Result
+   ↓
+Generate Report
+```
+
+---
+
+## Level 4 – Multi-Agent
+
+```text
+                 Orchestrator
+                      |
+       ┌──────────────┼──────────────┐
+       ↓              ↓              ↓
+ API Analyzer    Test Generator   Executor
+       |              |              |
+       └──────────────┼──────────────┘
+                      ↓
+                  Reviewer
+                      ↓
+                   Report
+```
+
+This progression is excellent to explain during an interview because it demonstrates that you understand **how GenAI applications evolve from simple LLM calls into production-style Agentic systems**.
+
+---
+
+# Interview Quick Revision
+
+### What is an AI Agent?
+
+> An AI Agent is a goal-oriented AI system that can reason about a task, choose appropriate tools, execute actions, observe results and decide what to do next.
+
+### Agent vs RAG?
+
+> RAG retrieves relevant information and provides it to the LLM. An Agent focuses on accomplishing a goal using reasoning, tools and actions. RAG can be one capability used by an Agent.
+
+### Agent vs Traditional Workflow?
+
+> A traditional workflow has predefined steps controlled by application code. An Agent can dynamically decide which steps or tools are needed based on the current situation.
+
+### What is Tool Calling?
+
+> Tool calling allows an AI model or Agent to use external capabilities such as APIs, databases, search, calculators or custom application functions.
+
+### What is Function Calling?
+
+> Function calling allows the model to request execution of a predefined function using structured arguments. The application executes the actual function and sends the result back to the model.
+
+### What is Agent Memory?
+
+> Agent memory allows the system to retain and retrieve relevant information or state from previous interactions or the current task.
+
+### What is Multi-Agent Architecture?
+
+> Multi-agent architecture divides a complex task among multiple specialized AI agents, usually coordinated by an orchestrator.
+
+---
+
+# Easy Memory Trick
+
+Remember the concepts like this:
+
+```text
+RAG
+↓
+"Give AI the right information."
+
+Tool Calling
+↓
+"Give AI the ability to use tools."
+
+Agent
+↓
+"Let AI decide what to do."
+
+Memory
+↓
+"Let AI remember useful information."
+
+Multi-Agent
+↓
+"Let multiple specialized AIs work together."
+```
+
+And the most important distinction:
+
+```text
+RAG = KNOWLEDGE
+
+Tool Calling = ACTION
+
+Agent = DECISION + ACTION
+
+Memory = RETENTION
+
+Multi-Agent = COLLABORATION
+```
+
