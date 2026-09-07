@@ -684,6 +684,105 @@ Creative Writing      → More creative
 
 > Temperature is a parameter that controls the randomness or creativity of an LLM's output. Lower temperature generally produces more predictable responses, while higher temperature can produce more diverse responses.
 
+# Temperature Quick Reference Guide
+
+## Temperature Values with Descriptions and Examples
+
+| Temperature | Level | Description | When to Use | Example Output |
+|---|---|---|---|---|
+| **0.0** | Deterministic | Completely predictable, always the same response | Code generation, data extraction, exact answers | Always generates: `409 Conflict for duplicate email` |
+| **0.1** | Very Low | Highly controlled, minimal randomness | Structured API responses, consistent test cases | `Test Case 1: Missing name (400)` - Same every time |
+| **0.2** | Low | Controlled with slight variations | Positive test cases, happy path scenarios | Mostly consistent with minor wording variations |
+| **0.3** | Low-Moderate | Good balance for predictability | General test case generation (RECOMMENDED) | `Positive, Negative, Boundary test cases` |
+| **0.4** | Moderate | Balanced between control and creativity | Negative test cases, edge case discovery | Generates varied negative scenarios |
+| **0.5** | Moderate-High | Good mix of consistency and variety | Comprehensive test coverage, brainstorming | `Some predictability + creative edge cases` |
+| **0.6** | Moderate-High | Noticeable variety in responses | Security test cases, creative scenarios | Different security approaches each time |
+| **0.7** | High | Creative with diversity | Brainstorming test ideas, exploratory testing | `Novel, unexpected test scenarios` |
+| **0.8** | High | Very creative, varied responses | Creative writing, idea generation | Highly diverse outputs |
+| **0.9** | Very High | Significant randomness | Open-ended creative tasks | Very unpredictable |
+| **1.0+** | Very High | Maximum randomness | Story generation, extreme creativity | Each response is very different |
+
+---
+
+## Temperature for Specific Use Cases
+
+### API Test Case Generator
+
+| Use Case | Temperature | Reason | Example |
+|---|---|---|---|
+| **Positive Tests** | 0.2 | Should follow happy path consistently | `Valid user creation, all fields provided, 200 OK` |
+| **Negative Tests** | 0.4 | Needs variety to find different failures | `Missing name (400), Invalid email (400), Duplicate email (409)` |
+| **Boundary Tests** | 0.3 | Specific values should be predictable | `Age = 17 (invalid), Age = 18 (valid), Age = 999 (boundary)` |
+| **Security Tests** | 0.5 | Some creativity to find novel vulnerabilities | `SQL injection attempts, XSS payloads, authorization bypasses` |
+| **Edge Cases** | 0.5 | Discover unexpected scenarios | `Empty arrays, null values, special characters` |
+| **Performance Tests** | 0.2 | Follow established patterns | `Load with 1000 concurrent users, 10000 requests per second` |
+
+---
+
+## .NET Code Example
+
+```csharp
+// API Test Case Generator Configuration
+public class TemperatureConfiguration
+{
+    // Positive Test Cases - Very Consistent
+    public static GenerationConfig PositiveTestConfig =>
+        new GenerationConfig
+        {
+            Temperature = 0.2f,
+            MaxOutputTokens = 2048
+        };
+
+    // Negative Test Cases - Some Variety
+    public static GenerationConfig NegativeTestConfig =>
+        new GenerationConfig
+        {
+            Temperature = 0.4f,
+            MaxOutputTokens = 2048
+        };
+
+    // Edge Cases - Balanced
+    public static GenerationConfig EdgeCaseConfig =>
+        new GenerationConfig
+        {
+            Temperature = 0.5f,
+            MaxOutputTokens = 2048
+        };
+
+    // General Purpose (Recommended for POC)
+    public static GenerationConfig DefaultConfig =>
+        new GenerationConfig
+        {
+            Temperature = 0.3f,
+            MaxOutputTokens = 2048,
+            TopP = 0.9f,
+            TopK = 40
+        };
+}
+
+// Usage
+public class TestCaseGeneratorService
+{
+    public async Task<string> GeneratePositiveTestCasesAsync(string apiSpec)
+    {
+        var config = TemperatureConfiguration.PositiveTestConfig;
+        // Generate test cases with temperature = 0.2
+    }
+
+    public async Task<string> GenerateNegativeTestCasesAsync(string apiSpec)
+    {
+        var config = TemperatureConfiguration.NegativeTestConfig;
+        // Generate test cases with temperature = 0.4
+    }
+
+    public async Task<string> GenerateEdgeCasesAsync(string apiSpec)
+    {
+        var config = TemperatureConfiguration.EdgeCaseConfig;
+        // Generate test cases with temperature = 0.5
+    }
+}
+
+
 ---
 
 # 6. What is Hallucination?
