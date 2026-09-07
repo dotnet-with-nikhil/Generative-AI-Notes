@@ -1097,6 +1097,19 @@ Better Output
 
 > Prompt engineering is the process of designing clear, structured, and specific instructions for an LLM to get more accurate, consistent, and useful responses.
 
+| Prompt Type       | Simple Meaning             | Example                            |
+| ----------------- | -------------------------- | ---------------------------------- |
+| Zero-shot         | No example provided        | "Generate test cases."             |
+| One-shot          | One example provided       | Give one test case example         |
+| Few-shot          | Multiple examples provided | Give 2–3 test case examples        |
+| Role-based        | Give AI a role             | "Act as a .NET QA expert."         |
+| Instruction       | Clearly state the task     | "Generate 10 negative tests."      |
+| Contextual        | Provide background         | Give API/business rules            |
+| Structured output | Specify response format    | "Return valid JSON."               |
+| Constraint-based  | Give rules/restrictions    | "Generate exactly 5 API tests."    |
+| Prompt chaining   | Split a task into steps    | Analyze → Generate → Code → Review |
+
+
 ---
 
 # 8. What is an Embedding?
