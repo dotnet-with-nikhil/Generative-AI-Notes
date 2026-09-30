@@ -942,6 +942,16 @@ The solution can subsequently be extended with tool calling and Agentic AI to al
 
 ---
 
+Package	Version	Purpose
+Google.Generativeai	1.0.0	Generate embeddings using text-embedding-004 model
+Pgvector	0.2.1	Store vectors in PostgreSQL, perform similarity search
+Npgsql.EntityFrameworkCore.PostgreSQL	8.0.0	EF Core PostgreSQL provider with vector support
+
+
+
+Gemini Models for LLM (Text Generation)
+gemini-pro
+
 
 # Implementation
 
